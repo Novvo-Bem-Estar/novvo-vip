@@ -1,0 +1,132 @@
+<!doctype html>
+<!--
+  Passagem do grupo VIP da Novvo (vip.novvo.com.br).
+  Fica fora da Shopify porque a loja mostra um aviso de saída antes de
+  qualquer link para chat.whatsapp.com. Subdomínios de novvo.com.br passam
+  pelo aviso. Esta página manda ao GA4 o evento entrar_grupo_vip com a UTM
+  da peça e leva a pessoa ao grupo. Para trocar o grupo, troque o link nas
+  duas linhas que têm chat.whatsapp.com.
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Grupo VIP da Novvo</title>
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+
+    <!-- START: Google Tag Manager -->
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','GTM-NTDFPFF');
+    </script>
+    <!-- END: Google Tag Manager -->
+
+    <script>
+      (function () {
+        var DESTINO = "https://chat.whatsapp.com/GLsGr6GDfNJ1woy5HxfhqN";
+        // Tempo máximo de espera pelo GA4; depois disso a pessoa segue mesmo assim.
+        var LIMITE_MS = 2500;
+        // ?vip_teste=1 não redireciona: serve para medir o tempo até o GA4.
+        var TESTE = /[?&]vip_teste=1(&|$)/.test(window.location.search);
+        var foi = false;
+
+        function ir() {
+          if (foi) return;
+          foi = true;
+          window.vipSaida = Math.round(performance.now());
+          if (!TESTE) window.location.replace(DESTINO);
+        }
+
+        // Segue quando o pedido do GA4 com o evento sai do navegador. Ele vai
+        // por sendBeacon ou fetch com keepalive, que terminam mesmo depois que
+        // a página muda.
+        function viu(url, corpo) {
+          var texto = String(url || '') + ' ' + (typeof corpo === 'string' ? corpo : '');
+          if (/\/g\/collect/.test(texto) && texto.indexOf('entrar_grupo_vip') > -1) {
+            window.vipGa4 = Math.round(performance.now());
+            ir();
+          }
+        }
+        if (navigator.sendBeacon) {
+          var beacon = navigator.sendBeacon.bind(navigator);
+          navigator.sendBeacon = function (url, corpo) {
+            var ok = beacon(url, corpo);
+            viu(url, corpo);
+            return ok;
+          };
+        }
+        if (window.fetch) {
+          var buscar = window.fetch.bind(window);
+          window.fetch = function (pedido, opcoes) {
+            var resposta = buscar(pedido, opcoes);
+            viu(pedido && pedido.url ? pedido.url : pedido, opcoes && opcoes.body);
+            return resposta;
+          };
+        }
+
+        // O GA4 do GTM não manda page_view (send_page_view = false). Este
+        // evento vai para a mesma propriedade pela tag do Google que o GTM
+        // carrega, leva a UTM da URL e abre a sessão com a origem certa.
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { window.dataLayer.push(arguments); }
+        gtag('event', 'entrar_grupo_vip', { send_to: 'G-8QQDTQZZZZ' });
+
+        setTimeout(ir, LIMITE_MS);
+      })();
+    </script>
+
+    <style>
+      html, body { margin: 0; height: 100%; }
+      .vip {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #0D3E51;
+        color: #ffffff;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+      }
+      .vip p { margin: 0 0 20px; font-size: 18px; }
+      .vip-rodinha {
+        width: 36px;
+        height: 36px;
+        margin-bottom: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.25);
+        border-top-color: #7AD9E6;
+        border-radius: 50%;
+        animation: vip-girar 0.8s linear infinite;
+      }
+      @keyframes vip-girar { to { transform: rotate(360deg); } }
+      .vip a {
+        visibility: hidden;
+        color: #7AD9E6;
+        font-size: 14px;
+      }
+      .vip a.vip-reserva { visibility: visible; }
+    </style>
+    <noscript><style>.vip a { visibility: visible; }</style></noscript>
+  </head>
+  <body>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NTDFPFF" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <main class="vip">
+      <div class="vip-rodinha" aria-hidden="true"></div>
+      <p>Abrindo o grupo VIP da Novvo...</p>
+      <a href="https://chat.whatsapp.com/GLsGr6GDfNJ1woy5HxfhqN">Se o grupo não abrir, toque aqui</a>
+    </main>
+    <script>
+      // O link de reserva só aparece se a pessoa ainda estiver aqui depois de 4 segundos.
+      setTimeout(function () {
+        document.querySelector('.vip a').className = 'vip-reserva';
+      }, 4000);
+    </script>
+  </body>
+</html>
