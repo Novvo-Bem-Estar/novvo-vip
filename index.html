@@ -70,10 +70,45 @@
 
         // O GA4 do GTM não manda page_view (send_page_view = false). Este
         // evento vai para a mesma propriedade pela tag do Google que o GTM
-        // carrega, leva a UTM da URL e abre a sessão com a origem certa.
+        // carrega e leva a UTM da URL.
+        // Links internos (banner da home) não levam UTM, para não apagar a origem
+        // real da visita. Eles usam ?origem=..., que vai junto no evento.
         window.dataLayer = window.dataLayer || [];
         function gtag() { window.dataLayer.push(arguments); }
-        gtag('event', 'entrar_grupo_vip', { send_to: 'G-8QQDTQZZZZ' });
+        var origem = (window.location.search.match(/[?&]origem=([^&#]+)/) || [])[1];
+        var dados = { send_to: 'G-8QQDTQZZZZ' };
+        if (origem) dados.origem = decodeURIComponent(origem);
+
+        // Consentimento: na loja quem decide é o app de cookies (Pandectes), que
+        // grava a escolha da pessoa num cookie de todo o novvo.com.br. Aqui não
+        // há o app, então a página lê essa escolha e repassa ao Google do mesmo
+        // jeito que a loja faz. Sem escolha registrada, segue negado, como na loja.
+        // Categorias bloqueadas (bits): 1 funcionais, 2 análise, 4 anúncios.
+        function consentimento() {
+          var m = document.cookie.match(/(?:^|; )_pandectes_gdpr=([^;]+)/);
+          if (!m) return;
+          try {
+            var c = JSON.parse(atob(decodeURIComponent(m[1])));
+            if (c.status !== 'allow') return;
+            var bloqueado = Number(c.preferences) || 0;
+            gtag('consent', 'update', {
+              analytics_storage: bloqueado & 2 ? 'denied' : 'granted',
+              ad_storage: bloqueado & 4 ? 'denied' : 'granted',
+              ad_user_data: bloqueado & 4 ? 'denied' : 'granted',
+              ad_personalization: bloqueado & 1 ? 'denied' : 'granted'
+            });
+          } catch (e) {}
+        }
+
+        // Espera o GTM carregar (ele define o consentimento padrão) e só então
+        // repassa a escolha da pessoa e manda o evento.
+        var inicio = Date.now();
+        (function enviar() {
+          var gtm = window.google_tag_manager && window.google_tag_manager['GTM-NTDFPFF'];
+          if (!gtm && Date.now() - inicio < 1500) return setTimeout(enviar, 50);
+          consentimento();
+          gtag('event', 'entrar_grupo_vip', dados);
+        })();
 
         setTimeout(ir, LIMITE_MS);
       })();
